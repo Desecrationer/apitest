@@ -38,23 +38,20 @@ async def create_player(request: Request):
 
 
 @app.post("/player/{player_id}/update_last_login")
-async def update_last_login(player_id:int, request: Request):
-    """
-    Updates the timestamp of when the player last logged in. Should be updated each time a player logs in.
-    """
-    data = await request.json()
-    last_login = data.get("last_login")
+async def update_last_login(player_id: int, request: Request):
+    data = await request.json()  # expects {"last_login": "..."} (ISO string or epoch)
     sql = """
-      UPDATE player
-      SET last_login = {last_login} WHERE player_id = {player_id}
-      RETURNING player_id, character_name, isStateless, created_at, last_login
+        UPDATE player
+        SET last_login = %(last_login)s::timestamptz
+        WHERE player_id = %(player_id)s
+        RETURNING player_id, character_name, is_stateless, created_at, last_login
+        /* If your column is actually "isStateless", use "isStateless" (quoted) above */
     """
     with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, (last_login, player_id))
+            cur.execute(sql, {"last_login": data["last_login"], "player_id": player_id})
             row = cur.fetchone()
     return {"message": "Login Updated", "player": row}
-
 
 
 @app.get("/player/{player_id}")
