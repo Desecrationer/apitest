@@ -9,9 +9,11 @@ app = FastAPI()
 # e.g. postgres://USER:PASSWORD@HOST:PORT/DBNAME
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-
 @app.post("/player/create_player")
 async def create_player(request: Request):
+    """
+    Creates a new player in the database. Should be called when intializing the game.
+    """
     data = await request.json()
     character_name= data.get("character_name")
     isStateless = data.get("isStateless")
@@ -33,7 +35,28 @@ async def create_player(request: Request):
             cur.execute(sql, (character_name, isStateless, created_at, last_login))
             row = cur.fetchone()
     return {"message": "Player upserted", "player": row}
-6
+
+
+@app.post("/player/{player_id}/update_last_login")
+async def update_last_login(player_id:int, request: Request):
+    """
+    Updates the timestamp of when the player last logged in. Should be updated each time a player logs in.
+    """
+    data = await request.json()
+    last_login = data.get("last_login")
+    sql = """
+      UPDATE player
+      SET last_login = {last_login} WHERE player_id = {player_id}
+      RETURNING player_id, character_name, isStateless, created_at, last_login
+    """
+    with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (last_login, player_id))
+            row = cur.fetchone()
+    return {"message": "Login Updated", "player": row}
+
+
+
 @app.get("/player/{player_id}")
 def get_player(player_id: int):
     sql = "SELECT player_id, character_name, isStateless, created_at, last_login FROM player WHERE player_id = %s"
@@ -47,7 +70,7 @@ def get_player(player_id: int):
 
 
 @app.get("/player/{player_id}/state")
-def get_player(player_id: int):
+def get_player_state(player_id: int):
     sql = "SELECT isStateless FROM player WHERE player_id = %s"
     with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
         with conn.cursor() as cur:
