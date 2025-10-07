@@ -5,10 +5,22 @@ from psycopg.rows import dict_row
 
 app = FastAPI()
 
-# Railway will provide DATABASE_URL automatically if you add a Postgres db to your project.
+# # Railway will provide DATABASE_URL automatically if you add a Postgres db to your project.
 # e.g. postgres://USER:PASSWORD@HOST:PORT/DBNAME
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+# # Create table on startup (id auto-increments)
+# @app.on_event("startup")
+# def init_db():
+#     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+#         with conn.cursor() as cur:
+#             cur.execute("""
+#                 CREATE TABLE IF NOT EXISTS players (
+#                     id SERIAL PRIMARY KEY,
+#                     username TEXT UNIQUE NOT NULL,
+#                     health INTEGER NOT NULL
+#                 )
+#             """)
 
 @app.post("/player/create_player")
 async def create_player(request: Request):
